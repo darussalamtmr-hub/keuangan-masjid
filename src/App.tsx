@@ -159,7 +159,7 @@ const Sidebar = ({ currentView, setCurrentView, handleLogout, currentUser }: any
       >
         <LogOut className="w-4 h-4 mr-2" /> Keluar
       </button>
-      <p className="text-xs text-emerald-400 text-center mt-4">Sistem Keuangan Masjid v3.3</p>
+      <p className="text-xs text-emerald-400 text-center mt-4">Sistem Keuangan Masjid TMR</p>
     </div>
   </div>
 );
