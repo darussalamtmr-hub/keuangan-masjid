@@ -31,7 +31,7 @@ import {
   getAuth, 
   signInAnonymously,
   onAuthStateChanged,
-  User
+  type User
 } from 'firebase/auth';
 import { 
   getFirestore, 
