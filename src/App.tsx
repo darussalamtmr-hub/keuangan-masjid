@@ -22,7 +22,11 @@ import {
   Users,
   Key,
   ShieldAlert,
-  Database
+  Database,
+  Pencil,
+  Trash2,
+  Landmark,
+  Coins
 } from 'lucide-react';
 
 // === IMPORT FIREBASE ===
@@ -51,6 +55,7 @@ interface Transaction {
   category: string;
   date: string;
   description: string;
+  paymentMethod?: 'cash' | 'bank';
 }
 
 interface Account {
@@ -319,18 +324,28 @@ const LoginView = ({ onLogin, accounts }: any) => {
   );
 };
 
-const DashboardView = ({ balance, totalIncome, totalExpense, setCurrentView, transactions, currentUser }: any) => (
+const DashboardView = ({ balance, cashBalance, bankBalance, totalIncome, totalExpense, setCurrentView, transactions, currentUser }: any) => (
   <div className="space-y-6">
     <h2 className="text-2xl font-bold text-gray-800">Ringkasan Keuangan</h2>
     
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex items-center">
-        <div className="bg-emerald-100 p-4 rounded-full mr-4">
+        <div className="bg-emerald-100 p-4 rounded-full mr-4 flex-shrink-0">
           <Wallet className="w-8 h-8 text-emerald-600" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <p className="text-sm text-gray-500 font-medium">Total Saldo Saat Ini</p>
-          <p className="text-2xl font-bold text-gray-800">{formatCurrency(balance)}</p>
+          <p className="text-2xl font-bold text-gray-800 truncate">{formatCurrency(balance)}</p>
+          <div className="mt-2 flex flex-col text-xs space-y-1">
+             <div className="flex justify-between items-center bg-gray-50 p-1.5 rounded border border-gray-100">
+               <span className="flex items-center text-gray-600"><Coins className="w-3 h-3 mr-1"/> Tunai (Kas)</span>
+               <span className="font-semibold text-emerald-700">{formatCurrency(cashBalance)}</span>
+             </div>
+             <div className="flex justify-between items-center bg-gray-50 p-1.5 rounded border border-gray-100">
+               <span className="flex items-center text-gray-600"><Landmark className="w-3 h-3 mr-1"/> Rekening Bank</span>
+               <span className="font-semibold text-blue-700">{formatCurrency(bankBalance)}</span>
+             </div>
+          </div>
         </div>
       </div>
 
@@ -387,8 +402,13 @@ const DashboardView = ({ balance, totalIncome, totalExpense, setCurrentView, tra
                 {t.type === 'in' ? <ArrowDownCircle className="w-5 h-5" /> : <ArrowUpCircle className="w-5 h-5" />}
               </div>
               <div>
-                <p className="font-semibold text-gray-800">{t.category}</p>
-                <p className="text-xs text-gray-500">{t.description || 'Tidak ada keterangan'}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-gray-800">{t.category}</p>
+                  <span className={`text-[10px] px-2 py-0.5 rounded border ${t.paymentMethod === 'bank' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}>
+                    {t.paymentMethod === 'bank' ? 'Bank' : 'Tunai'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{t.description || 'Tidak ada keterangan'}</p>
                 <p className="text-xs text-gray-400 mt-1">{formatDate(t.date)}</p>
               </div>
             </div>
@@ -407,15 +427,17 @@ const DashboardView = ({ balance, totalIncome, totalExpense, setCurrentView, tra
   </div>
 );
 
-const TransactionForm = ({ type, incomeCategories, expenseCategories, onSave, onCancel }: any) => {
+const TransactionForm = ({ type, incomeCategories, expenseCategories, onSave, onCancel, initialData }: any) => {
   const isIncome = type === 'in';
   const categories = isIncome ? incomeCategories : expenseCategories;
   const colorTheme = isIncome ? 'emerald' : 'red';
+  const isEditMode = !!initialData;
 
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState(initialData ? formatCurrency(initialData.amount).replace('Rp', '').replace(/\./g, '').trim() : '');
+  const [category, setCategory] = useState(initialData?.category || '');
+  const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank'>(initialData?.paymentMethod || 'cash');
   const [isSaving, setIsSaving] = useState(false);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -437,39 +459,66 @@ const TransactionForm = ({ type, incomeCategories, expenseCategories, onSave, on
       amount: parseInt(amount.replace(/[^0-9]/g, ''), 10),
       category,
       date,
-      description
+      description,
+      paymentMethod
     });
     
     setIsSaving(false);
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className={`bg-${colorTheme}-600 p-6 text-white`}>
-        <h2 className="text-2xl font-bold flex items-center">
-          {isIncome ? <ArrowDownCircle className="w-6 h-6 mr-2" /> : <ArrowUpCircle className="w-6 h-6 mr-2" />}
-          Form {isIncome ? 'Pemasukan' : 'Pengeluaran'} Baru
-        </h2>
-        <p className={`text-${colorTheme}-100 mt-1 text-sm`}>
-          Catat dana yang {isIncome ? 'masuk ke' : 'keluar dari'} kas masjid.
-        </p>
+    <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+      <div className={`bg-${colorTheme}-600 p-6 text-white flex justify-between items-center`}>
+        <div>
+          <h2 className="text-2xl font-bold flex items-center">
+            {isIncome ? <ArrowDownCircle className="w-6 h-6 mr-2" /> : <ArrowUpCircle className="w-6 h-6 mr-2" />}
+            {isEditMode ? 'Edit Transaksi' : `Form ${isIncome ? 'Pemasukan' : 'Pengeluaran'} Baru`}
+          </h2>
+          {!isEditMode && (
+            <p className={`text-${colorTheme}-100 mt-1 text-sm`}>
+              Catat dana yang {isIncome ? 'masuk ke' : 'keluar dari'} kas masjid.
+            </p>
+          )}
+        </div>
+        {isEditMode && (
+          <button onClick={onCancel} className={`text-${colorTheme}-100 hover:text-white`}>
+            <X className="w-6 h-6" />
+          </button>
+        )}
       </div>
       
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        <div className="space-y-1">
-          <label className="flex items-center text-sm font-medium text-gray-700">
-            <Banknote className="w-4 h-4 mr-2" /> Nominal (Rp) <span className="text-red-500 ml-1">*</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rp</span>
-            <input
-              type="text"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-1">
+            <label className="flex items-center text-sm font-medium text-gray-700">
+              <Banknote className="w-4 h-4 mr-2" /> Nominal (Rp) <span className="text-red-500 ml-1">*</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">Rp</span>
+              <input
+                type="text"
+                required
+                value={amount}
+                onChange={handleAmountChange}
+                placeholder="0"
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-lg font-semibold"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="flex items-center text-sm font-medium text-gray-700">
+              <Wallet className="w-4 h-4 mr-2" /> Metode Penyimpanan <span className="text-red-500 ml-1">*</span>
+            </label>
+            <select
               required
-              value={amount}
-              onChange={handleAmountChange}
-              placeholder="0"
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-lg font-semibold"
-            />
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'bank')}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white text-gray-800"
+            >
+              <option value="cash">Tunai (Kas/Brankas)</option>
+              <option value="bank">Rekening Bank</option>
+            </select>
           </div>
         </div>
 
@@ -533,7 +582,7 @@ const TransactionForm = ({ type, incomeCategories, expenseCategories, onSave, on
               isIncome ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'
             } disabled:opacity-50`}
           >
-            {isSaving ? 'Menyimpan...' : 'Simpan Transaksi'}
+            {isSaving ? 'Menyimpan...' : (isEditMode ? 'Update Transaksi' : 'Simpan Transaksi')}
           </button>
         </div>
       </form>
@@ -541,9 +590,10 @@ const TransactionForm = ({ type, incomeCategories, expenseCategories, onSave, on
   );
 };
 
-const HistoryView = ({ transactions }: any) => {
+const HistoryView = ({ transactions, currentUser, onUpdateTransaction, onDeleteTransaction, incomeCategories, expenseCategories }: any) => {
   const [filterMonth, setFilterMonth] = useState('all');
   const [filterYear, setFilterYear] = useState('all');
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   const availableYears = useMemo(() => {
     const years = new Set(transactions.map((t: Transaction) => t.date.substring(0, 4)));
@@ -561,14 +611,22 @@ const HistoryView = ({ transactions }: any) => {
     });
   }, [transactions, filterMonth, filterYear]);
 
-  const { filteredIncome, filteredExpense } = useMemo(() => {
+  const { filteredIncome, filteredExpense, filteredCashBalance, filteredBankBalance } = useMemo(() => {
     return filteredTransactions.reduce(
       (acc: any, curr: Transaction) => {
-        if (curr.type === 'in') acc.filteredIncome += curr.amount;
-        else acc.filteredExpense += curr.amount;
+        const method = curr.paymentMethod || 'cash';
+        if (curr.type === 'in') {
+          acc.filteredIncome += curr.amount;
+          if (method === 'cash') acc.filteredCashBalance += curr.amount;
+          if (method === 'bank') acc.filteredBankBalance += curr.amount;
+        } else {
+          acc.filteredExpense += curr.amount;
+          if (method === 'cash') acc.filteredCashBalance -= curr.amount;
+          if (method === 'bank') acc.filteredBankBalance -= curr.amount;
+        }
         return acc;
       },
-      { filteredIncome: 0, filteredExpense: 0 }
+      { filteredIncome: 0, filteredExpense: 0, filteredCashBalance: 0, filteredBankBalance: 0 }
     );
   }, [filteredTransactions]);
 
@@ -579,7 +637,26 @@ const HistoryView = ({ transactions }: any) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Modal Edit Transaksi */}
+      {editingTx && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl">
+            <TransactionForm
+              type={editingTx.type}
+              incomeCategories={incomeCategories}
+              expenseCategories={expenseCategories}
+              initialData={editingTx}
+              onSave={(updatedData: any) => {
+                onUpdateTransaction(editingTx.id, updatedData);
+                setEditingTx(null);
+              }}
+              onCancel={() => setEditingTx(null)}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="hidden print:block text-center mb-8 border-b-2 border-gray-800 pb-4 mt-8">
         <h1 className="text-2xl font-bold text-gray-900 uppercase tracking-wider">Laporan Keuangan Masjid Darussalam</h1>
         <p className="text-gray-700">Taman Margasatwa Ragunan</p>
@@ -642,8 +719,10 @@ const HistoryView = ({ transactions }: any) => {
               <tr className="bg-gray-50 text-gray-600 text-sm border-b border-gray-200 print:bg-gray-100 print:text-black">
                 <th className="p-4 font-semibold print:border print:border-gray-300">Tanggal</th>
                 <th className="p-4 font-semibold print:border print:border-gray-300">Kategori & Keterangan</th>
+                <th className="p-4 font-semibold print:border print:border-gray-300">Metode</th>
                 <th className="p-4 font-semibold text-right print:border print:border-gray-300">Pemasukan</th>
                 <th className="p-4 font-semibold text-right print:border print:border-gray-300">Pengeluaran</th>
+                {currentUser?.role === 'admin' && <th className="p-4 font-semibold text-center print:hidden">Aksi</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -654,16 +733,45 @@ const HistoryView = ({ transactions }: any) => {
                     <p className="font-semibold text-gray-800 print:text-black">{t.category}</p>
                     <p className="text-xs text-gray-500 mt-1 print:text-gray-700">{t.description || '-'}</p>
                   </td>
+                  <td className="p-4 print:border print:border-gray-300">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${t.paymentMethod === 'bank' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                      {t.paymentMethod === 'bank' ? 'Bank' : 'Tunai'}
+                    </span>
+                  </td>
                   <td className="p-4 text-right font-medium text-green-600 whitespace-nowrap print:border print:border-gray-300 print:text-black">
                     {t.type === 'in' ? formatCurrency(t.amount) : '-'}
                   </td>
                   <td className="p-4 text-right font-medium text-red-600 whitespace-nowrap print:border print:border-gray-300 print:text-black">
                     {t.type === 'out' ? formatCurrency(t.amount) : '-'}
                   </td>
+                  {currentUser?.role === 'admin' && (
+                    <td className="p-4 text-center print:hidden">
+                      <div className="flex justify-center gap-2">
+                        <button 
+                          onClick={() => setEditingTx(t)}
+                          className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
+                          title="Edit Transaksi"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if(window.confirm('Yakin ingin menghapus transaksi ini? Data tidak bisa dikembalikan.')) {
+                              onDeleteTransaction(t.id);
+                            }
+                          }}
+                          className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md transition-colors"
+                          title="Hapus Transaksi"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-gray-500 print:border print:border-gray-300">
+                  <td colSpan={currentUser?.role === 'admin' ? 6 : 5} className="p-8 text-center text-gray-500 print:border print:border-gray-300">
                     Tidak ada transaksi yang cocok dengan filter yang dipilih.
                   </td>
                 </tr>
@@ -672,15 +780,21 @@ const HistoryView = ({ transactions }: any) => {
             {filteredTransactions.length > 0 && (
               <tfoot className="bg-gray-50 border-t-2 border-gray-200 print:bg-gray-100">
                 <tr>
-                  <td colSpan={2} className="p-4 font-bold text-right text-gray-800 print:border print:border-gray-300">TOTAL PERIODE INI:</td>
+                  <td colSpan={3} className="p-4 font-bold text-right text-gray-800 print:border print:border-gray-300">TOTAL PERIODE INI:</td>
                   <td className="p-4 text-right font-bold text-green-700 print:border print:border-gray-300 print:text-black">{formatCurrency(filteredIncome)}</td>
                   <td className="p-4 text-right font-bold text-red-700 print:border print:border-gray-300 print:text-black">{formatCurrency(filteredExpense)}</td>
+                  {currentUser?.role === 'admin' && <td className="print:hidden"></td>}
                 </tr>
                 <tr>
-                  <td colSpan={2} className="p-4 font-bold text-right text-gray-800 print:border print:border-gray-300">SALDO PERIODE INI:</td>
-                  <td colSpan={2} className="p-4 text-center font-bold text-lg text-emerald-700 print:border print:border-gray-300 print:text-black">
-                    {formatCurrency(filteredIncome - filteredExpense)}
+                  <td colSpan={3} className="p-4 font-bold text-right text-gray-800 print:border print:border-gray-300">SALDO PERIODE INI:</td>
+                  <td colSpan={2} className="p-4 text-center print:border print:border-gray-300 print:text-black">
+                    <div className="font-bold text-lg text-emerald-700">{formatCurrency(filteredIncome - filteredExpense)}</div>
+                    <div className="flex justify-center gap-4 mt-2 text-xs font-medium text-gray-600 bg-white p-2 rounded-lg border border-gray-200 w-fit mx-auto print:border-none print:bg-transparent">
+                      <span className="flex items-center"><Coins className="w-3 h-3 mr-1"/> Tunai: {formatCurrency(filteredCashBalance)}</span>
+                      <span className="flex items-center"><Landmark className="w-3 h-3 mr-1"/> Bank: {formatCurrency(filteredBankBalance)}</span>
+                    </div>
                   </td>
+                  {currentUser?.role === 'admin' && <td className="print:hidden"></td>}
                 </tr>
               </tfoot>
             )}
@@ -1084,19 +1198,24 @@ export default function App() {
     };
   }, [authUser, isFallbackMode]);
 
-  const { totalIncome, totalExpense, balance } = useMemo(() => {
+  const { totalIncome, totalExpense, balance, cashBalance, bankBalance } = useMemo(() => {
     return transactions.reduce(
       (acc, curr) => {
+        const method = curr.paymentMethod || 'cash';
         if (curr.type === 'in') {
           acc.totalIncome += curr.amount;
           acc.balance += curr.amount;
+          if (method === 'cash') acc.cashBalance += curr.amount;
+          if (method === 'bank') acc.bankBalance += curr.amount;
         } else {
           acc.totalExpense += curr.amount;
           acc.balance -= curr.amount;
+          if (method === 'cash') acc.cashBalance -= curr.amount;
+          if (method === 'bank') acc.bankBalance -= curr.amount;
         }
         return acc;
       },
-      { totalIncome: 0, totalExpense: 0, balance: 0 }
+      { totalIncome: 0, totalExpense: 0, balance: 0, cashBalance: 0, bankBalance: 0 }
     );
   }, [transactions]);
 
@@ -1113,6 +1232,33 @@ export default function App() {
       setCurrentView('dashboard');
     } catch (e) {
       alert("Gagal menyimpan ke database!");
+    }
+  };
+
+  const handleUpdateTransaction = async (id: string, updatedTx: any) => {
+    if (isFallbackMode) {
+      setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updatedTx } : t).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      return;
+    }
+
+    try {
+      const { id: txId, ...dataToUpdate } = updatedTx;
+      await updateDoc(doc(db, 'transactions', id), dataToUpdate);
+    } catch (e) {
+      alert("Gagal memperbarui transaksi di database!");
+    }
+  };
+
+  const handleDeleteTransaction = async (id: string) => {
+    if (isFallbackMode) {
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'transactions', id));
+    } catch (e) {
+      alert("Gagal menghapus transaksi dari database!");
     }
   };
 
@@ -1204,10 +1350,10 @@ export default function App() {
         <MobileMenu isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen} setCurrentView={setCurrentView} handleLogout={handleLogout} currentUser={currentUser} />
         
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto print:p-0 print:m-0 print:overflow-visible">
-          {currentView === 'dashboard' && <DashboardView balance={balance} totalIncome={totalIncome} totalExpense={totalExpense} setCurrentView={setCurrentView} transactions={transactions} currentUser={currentUser} />}
+          {currentView === 'dashboard' && <DashboardView balance={balance} cashBalance={cashBalance} bankBalance={bankBalance} totalIncome={totalIncome} totalExpense={totalExpense} setCurrentView={setCurrentView} transactions={transactions} currentUser={currentUser} />}
           {currentView === 'add-income' && currentUser?.role === 'admin' && <TransactionForm type="in" incomeCategories={incomeCategories} expenseCategories={expenseCategories} onSave={handleAddTransaction} onCancel={() => setCurrentView('dashboard')} />}
           {currentView === 'add-expense' && currentUser?.role === 'admin' && <TransactionForm type="out" incomeCategories={incomeCategories} expenseCategories={expenseCategories} onSave={handleAddTransaction} onCancel={() => setCurrentView('dashboard')} />}
-          {currentView === 'history' && <HistoryView transactions={transactions} />}
+          {currentView === 'history' && <HistoryView transactions={transactions} currentUser={currentUser} onUpdateTransaction={handleUpdateTransaction} onDeleteTransaction={handleDeleteTransaction} incomeCategories={incomeCategories} expenseCategories={expenseCategories} />}
           {currentView === 'settings' && currentUser?.role === 'admin' && <SettingsView incomeCategories={incomeCategories} setIncomeCategories={setIncomeCategories} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} />}
           {currentView === 'account' && <AccountSettingsView currentUser={currentUser} accounts={accounts} />}
         </main>
