@@ -164,30 +164,34 @@ const Sidebar = ({ currentView, setCurrentView, handleLogout, currentUser }: any
       >
         <LogOut className="w-4 h-4 mr-2" /> Keluar
       </button>
-      <p className="text-xs text-emerald-400 text-center mt-4">Sistem Keuangan Masjid TMR</p>
+      <p className="text-xs text-emerald-400 text-center mt-4">Sistem Keuangan Masjid v4.1</p>
     </div>
   </div>
 );
 
+// --- PERBAIKAN TAMPILAN MOBILE DI SINI ---
 const MobileNav = ({ isMobileMenuOpen, setIsMobileMenuOpen }: any) => (
-  <div className="md:hidden bg-emerald-800 text-white flex justify-between items-center p-4 sticky top-0 z-50 print:hidden">
-    <div>
-      <h1 className="text-lg font-bold">Masjid Darussalam</h1>
-      <p className="text-emerald-300 text-[10px]">Taman Margasatwa Ragunan</p>
-    </div>
-    <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2">
-      {isMobileMenuOpen ? <X /> : <Menu />}
+  <div className="md:hidden bg-emerald-800 text-white flex items-center p-4 h-[72px] sticky top-0 z-50 print:hidden shadow-md">
+    <button 
+      onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+      className="p-2 mr-3 -ml-2 rounded-lg hover:bg-emerald-700 transition-colors focus:outline-none"
+    >
+      {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
     </button>
+    <div className="flex-1">
+      <h1 className="text-lg font-bold leading-none mb-1">Masjid Darussalam</h1>
+      <p className="text-emerald-300 text-[10px] leading-none">Taman Margasatwa Ragunan</p>
+    </div>
   </div>
 );
 
 const MobileMenu = ({ isMobileMenuOpen, setIsMobileMenuOpen, setCurrentView, handleLogout, currentUser }: any) => {
   if (!isMobileMenuOpen) return null;
   return (
-    <div className="md:hidden bg-emerald-700 text-white absolute w-full z-40 shadow-xl print:hidden">
+    <div className="md:hidden bg-emerald-700 text-white fixed top-[72px] bottom-0 left-0 w-full z-40 shadow-xl print:hidden overflow-y-auto">
       <button 
         onClick={() => {setCurrentView('dashboard'); setIsMobileMenuOpen(false);}}
-        className="w-full flex items-center px-6 py-4 border-b border-emerald-600"
+        className="w-full flex items-center px-6 py-4 border-b border-emerald-600 hover:bg-emerald-600 transition-colors active:bg-emerald-600"
       >
         <LayoutDashboard className="w-5 h-5 mr-3" /> Dasbor
       </button>
@@ -196,13 +200,13 @@ const MobileMenu = ({ isMobileMenuOpen, setIsMobileMenuOpen, setCurrentView, han
         <>
           <button 
             onClick={() => {setCurrentView('add-income'); setIsMobileMenuOpen(false);}}
-            className="w-full flex items-center px-6 py-4 border-b border-emerald-600"
+            className="w-full flex items-center px-6 py-4 border-b border-emerald-600 hover:bg-emerald-600 transition-colors active:bg-emerald-600"
           >
             <ArrowDownCircle className="w-5 h-5 mr-3 text-emerald-300" /> Catat Pemasukan
           </button>
           <button 
             onClick={() => {setCurrentView('add-expense'); setIsMobileMenuOpen(false);}}
-            className="w-full flex items-center px-6 py-4 border-b border-emerald-600"
+            className="w-full flex items-center px-6 py-4 border-b border-emerald-600 hover:bg-emerald-600 transition-colors active:bg-emerald-600"
           >
             <ArrowUpCircle className="w-5 h-5 mr-3 text-red-300" /> Catat Pengeluaran
           </button>
@@ -211,7 +215,7 @@ const MobileMenu = ({ isMobileMenuOpen, setIsMobileMenuOpen, setCurrentView, han
 
       <button 
         onClick={() => {setCurrentView('history'); setIsMobileMenuOpen(false);}}
-        className="w-full flex items-center px-6 py-4 border-b border-emerald-600"
+        className="w-full flex items-center px-6 py-4 border-b border-emerald-600 hover:bg-emerald-600 transition-colors active:bg-emerald-600"
       >
         <History className="w-5 h-5 mr-3" /> Buku Kas (Riwayat)
       </button>
@@ -219,7 +223,7 @@ const MobileMenu = ({ isMobileMenuOpen, setIsMobileMenuOpen, setCurrentView, han
       {currentUser?.role === 'admin' && (
         <button 
           onClick={() => {setCurrentView('settings'); setIsMobileMenuOpen(false);}}
-          className="w-full flex items-center px-6 py-4 border-b border-emerald-600"
+          className="w-full flex items-center px-6 py-4 border-b border-emerald-600 hover:bg-emerald-600 transition-colors active:bg-emerald-600"
         >
           <Settings className="w-5 h-5 mr-3" /> Pengaturan Kategori
         </button>
@@ -227,20 +231,21 @@ const MobileMenu = ({ isMobileMenuOpen, setIsMobileMenuOpen, setCurrentView, han
 
       <button 
         onClick={() => {setCurrentView('account'); setIsMobileMenuOpen(false);}}
-        className="w-full flex items-center px-6 py-4 border-b border-emerald-600"
+        className="w-full flex items-center px-6 py-4 border-b border-emerald-600 hover:bg-emerald-600 transition-colors active:bg-emerald-600"
       >
         <Users className="w-5 h-5 mr-3" /> Pengaturan Akun
       </button>
 
       <button 
         onClick={() => {handleLogout(); setIsMobileMenuOpen(false);}}
-        className="w-full flex items-center px-6 py-4 border-t border-emerald-600 text-red-300 hover:text-white hover:bg-red-600 transition-colors"
+        className="w-full flex items-center px-6 py-4 border-b border-emerald-600 text-red-300 hover:text-white hover:bg-red-600 transition-colors active:bg-red-600"
       >
         <LogOut className="w-5 h-5 mr-3" /> Keluar
       </button>
     </div>
   );
 };
+// ------------------------------------------
 
 const LoginView = ({ onLogin, accounts }: any) => {
   const [username, setUsername] = useState('');
